@@ -1,60 +1,63 @@
-from math import log
-
-from PIL import Image
-
-
-def fixrgb(rgb):
-    return (
-        min(255, max(0, rgb[0])),
-        min(255, max(0, rgb[1])),
-        min(255, max(0, rgb[2]))
-    )
+import wx
+import cv2 as cv
 
 
-def apply_fun(src: Image.Image, fun, param: list) -> Image:
-    result = src.copy()
-    for j in range(result.height):
-        for i in range(result.width):
-            pix = src.getpixel((i, j))
-            fun(pix, param)
-            result.putpixel((i, j), pix)
+def get_imagesize(img):
+    return (0, 0) if img is None else (img.shape[1], img.shape[0])
+
+
+def loadimage_cv(name):
+    try:
+        img = cv.cvtColor(cv.imread(name), cv.COLOR_BGR2RGB)
+    except Exception:
+        return None
+    return img
+
+
+def saveimage_cv(name, img):
+    try:
+        cv.imwrite(name, img)
+        return True
+    except Exception:
+        return False
+
+
+def toWxBitmap(img):
+    h, w = img.shape[:2]
+    try:
+        image = wx.Bitmap.FromBuffer(w, h, img)
+    except Exception:
+        image = wx.BitmapFromBuffer(w, h, img)
+    return image
+
+
+[SQUARE, RECTANGLE, TRAPEZOID, TRIANGLE, CIRCLE] = [0, 1, 2, 3, 4]
+
+
+def detect_cv(img):
+    result = [[] for i in range(5)]
+    img_grey = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    img_blur = cv.GaussianBlur(img_grey, (11, 11), 0)
+    _, thr = cv.threshold(img_blur, 244, 255, cv.THRESH_BINARY)
+    contours, _ = cv.findContours(thr, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+    for contour in contours:
+        approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
+        cv.drawContours(img, [approx], 0, (0, 0, 0), 3)
+        x = approx.ravel()[0]
+        y = approx.ravel()[1] - 5
+        if len(approx) == 3:
+            result[TRIANGLE] += (x, y)
+        elif len(approx) == 4:
+            x1, y1, w, h = cv.boundingRect(approx)
+            aspect_ratio = float(w) / h
+            if 0.95 <= aspect_ratio <= 1.05:
+                result[SQUARE] += (x, y)
+            elif 1.2 <= aspect_ratio <= 2:
+                result[RECTANGLE] += (x, y)
+            else:
+                result[TRAPEZOID] += (x, y)
+        elif len(approx) <= 17:
+            result[CIRCLE] += (x, y)
+        else:
+            pass
     return result
-
-
-def negative(pix, param):
-    return 255 - pix[0], 255 - pix[1], 255 - pix[2]
-
-
-def halftone(pix, param):
-    x = 0.3 * pix[0] + 0.59 * pix[1] + 0.11 * pix[2]
-    return x, x, x
-
-
-def binary(pix, param):
-    x = param[0]
-    return param[1] if (pix[0]+pix[1]+pix[2])/3 <= x else param[2]
-
-
-def linear_brightness(pix, param):
-    x = param[0]
-    result = (pix[0] + x, pix[1] + x, pix[2] + x)
-    return fixrgb(result)
-
-
-def nonlinear_brightness(pix, param):
-    x = param[0]
-    result = (
-        pix[0] + log(1 + (265 - pix[0])) * x,
-        pix[1] + log(1 + (265 - pix[1])) * x,
-        pix[2] + log(1 + (265 - pix[2])) * x,
-    )
-    return fixrgb(result)
-
-
-def get_brightness(src: Image.Image) -> float:
-    pass
-
-
-if __name__ == "__main__":
-    img = Image.open("1.jpg")
-    apply_fun(img, linear_brightness, [0])
