@@ -1,0 +1,7 @@
+# Files
+*.bak
+
+
+# Directories
+__pycache__
+.idea
