@@ -32,7 +32,7 @@ def toWxBitmap(img):
 
 
 def detect_cv(srcimg):
-    img = srcimg[:]
+    img = srcimg.copy()
     result = {
         "Square": [],
         "Rectangle": [],
