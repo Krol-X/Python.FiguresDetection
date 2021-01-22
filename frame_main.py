@@ -1,7 +1,5 @@
-import wx
-
-from resource import *
 from engine import *
+from resource import *
 
 
 #####################################################################
@@ -135,12 +133,12 @@ class MainFrame(wx.Frame):
             self.Refresh()
 
     def save_file(self):
-        if newimage is None:
+        if self.newimage is None:
             return
         dialog = wx.FileDialog(None, message="Save as...", defaultDir="",
                                wildcard=self.wildcard, style=wx.FD_SAVE)
         if dialog.ShowModal() == wx.ID_OK:
-            saveimage_cv(self.newimage)
+            saveimage_cv(dialog.GetPath(), self.newimage)
 
     def draw_frame(self, frame, image):
         if image is not None:
@@ -152,7 +150,9 @@ class MainFrame(wx.Frame):
         self.frame_new.setNewSize(get_imagesize(self.newimage))
 
     def detect(self):
-        result = detect_cv(self.image)
-        img = self.image[:]
-        # TODO: code...
-        self.newimage = img
+        result, self.newimage = detect_cv(self.image)
+        for i in range(len(result)):
+            for xy in result[i]:
+                cv.putText(self.newimage, STRS_INFO[i], (xy[0], xy[1]), cv.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0))
+        self.update_size()
+        self.Refresh()
