@@ -151,8 +151,8 @@ class MainFrame(wx.Frame):
 
     def detect(self):
         result, self.newimage = detect_cv(self.image)
-        for i in range(len(result)):
-            for xy in result[i]:
-                cv.putText(self.newimage, STRS_INFO[i], (xy[0], xy[1]), cv.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0))
+        for name, coord in result.items():
+            for xy in coord:
+                cv.putText(self.newimage, name, xy, cv.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 0))
         self.update_size()
         self.Refresh()

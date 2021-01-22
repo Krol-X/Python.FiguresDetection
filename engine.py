@@ -31,13 +31,15 @@ def toWxBitmap(img):
     return image
 
 
-[SQUARE, RECTANGLE, TRAPEZOID, TRIANGLE, CIRCLE] = [0, 1, 2, 3, 4]
-STRS_INFO = ["Square", "Rectangle", "Trapezoid", "Triangle", "Circle"]
-
-
 def detect_cv(srcimg):
     img = srcimg[:]
-    result = [[] for i in range(5)]
+    result = {
+        "Square": [],
+        "Rectangle": [],
+        "Trapezoid": [],
+        "Triangle": [],
+        "Circle": []
+    }
     img_grey = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img_blur = cv.GaussianBlur(img_grey, (11, 11), 0)
     _, thr = cv.threshold(img_blur, 244, 255, cv.THRESH_BINARY)
@@ -48,18 +50,18 @@ def detect_cv(srcimg):
         x = approx.ravel()[0]
         y = approx.ravel()[1] - 5
         if len(approx) == 3:
-            result[TRIANGLE].append((x, y))
+            result.get("Triangle").append((x, y))
         elif len(approx) == 4:
             x1, y1, w, h = cv.boundingRect(approx)
             aspect_ratio = float(w) / h
             if 0.95 <= aspect_ratio <= 1.05:
-                result[SQUARE].append((x, y))
+                result.get("Square").append((x, y))
             elif 1.2 <= aspect_ratio <= 2:
-                result[RECTANGLE].append((x, y))
+                result.get("Rectangle").append((x, y))
             else:
-                result[TRAPEZOID].append((x, y))
+                result.get("Trapezoid").append((x, y))
         elif len(approx) <= 17:
-            result[CIRCLE].append((x, y))
+            result.get("Circle").append((x, y))
         else:
             pass
     return result, img
