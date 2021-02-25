@@ -1,34 +1,6 @@
-import wx
 import cv2 as cv
 
-
-def get_imagesize(img):
-    return (0, 0) if img is None else (img.shape[1], img.shape[0])
-
-
-def loadimage_cv(name):
-    try:
-        img = cv.cvtColor(cv.imread(name), cv.COLOR_BGR2RGB)
-    except Exception:
-        return None
-    return img
-
-
-def saveimage_cv(name, img):
-    try:
-        cv.imwrite(name, img)
-        return True
-    except Exception:
-        return False
-
-
-def toWxBitmap(img):
-    h, w = img.shape[:2]
-    try:
-        image = wx.Bitmap.FromBuffer(w, h, img)
-    except Exception:
-        image = wx.BitmapFromBuffer(w, h, img)
-    return image
+__all__ = ["detect_cv"]
 
 
 def detect_cv(srcimg):
@@ -38,17 +10,20 @@ def detect_cv(srcimg):
         "Rectangle": [],
         "Trapezoid": [],
         "Triangle": [],
-        "Circle": []
+        "Circle": [],
+        "Ellipse": []
     }
     img_grey = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
     img_blur = cv.GaussianBlur(img_grey, (11, 11), 0)
     _, thr = cv.threshold(img_blur, 244, 255, cv.THRESH_BINARY)
     contours, _ = cv.findContours(thr, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
     for contour in contours:
-        approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
+        area = cv.contourArea(contour)
+        peri = cv.arcLength(contour, True)
+        approx = cv.approxPolyDP(contour, 0.01 * peri, True)
         cv.drawContours(img, [approx], 0, (0, 0, 0), 3)
-        x = approx.ravel()[0]
-        y = approx.ravel()[1] - 5
+        x = round(approx.ravel()[0])
+        y = round(approx.ravel()[1] - 5)
         if len(approx) == 3:
             result.get("Triangle").append((x, y))
         elif len(approx) == 4:
@@ -60,8 +35,13 @@ def detect_cv(srcimg):
                 result.get("Rectangle").append((x, y))
             else:
                 result.get("Trapezoid").append((x, y))
-        elif len(approx) <= 17:
-            result.get("Circle").append((x, y))
+        elif len(approx) <= 17 and peri > 0:
+            # PI*R^2 / (2*PI*R)^2 = 1/4*PI = 0.079577
+            t = area / (peri * peri)
+            if 0.07 <= t <= 0.087:
+                result.get("Circle").append((x, y))
+            else:
+                result.get("Ellipse").append((x, y))
         else:
             pass
     return result, img
